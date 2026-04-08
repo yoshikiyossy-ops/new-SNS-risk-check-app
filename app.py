@@ -4,7 +4,7 @@ import base64
 from io import BytesIO
 
 import streamlit as st
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from openai import OpenAI
 
 st.set_page_config(
@@ -21,12 +21,18 @@ if not api_key:
 
 client = OpenAI(api_key=api_key)
 
+# デバッグ表示を出したい時だけ True
+DEBUG_MODE = False
+
 
 # ----------------------------
 # UI
 # ----------------------------
 st.title("⚠️SNS要注意サイン診断⚠️")
 st.write("メッセージ内容や画像をAIが読み取り、危険度と注意ポイントを診断します。")
+
+st.caption("※画像がうまく選べない場合は、Instagram・LINE・Xなどのアプリ内ブラウザではなく、Chrome / Safari で直接開いてください。")
+st.caption("※iPhoneのHEIC画像で失敗する場合は、スクリーンショットを撮ってPNG/JPGでお試しください。")
 
 st.markdown("### ここにメッセージを貼る")
 text = st.text_area(
@@ -40,17 +46,54 @@ st.markdown("### 画像をアップしてください")
 uploaded_file = st.file_uploader(
     "画像を選択",
     type=["png", "jpg", "jpeg"],
-    key="image_uploader"
+    key="image_uploader",
+    help="PNG / JPG / JPEG の画像を選べます。うまくいかない場合はスクリーンショットをお試しください。"
 )
 
 image_bytes = None
+image_mime_type = None
+image_ready = False
+
 if uploaded_file is not None:
-    image_bytes = uploaded_file.read()
+    st.success("画像が選択されました。")
+
     try:
-        preview_img = Image.open(BytesIO(image_bytes))
-        st.image(preview_img, caption="アップロード画像", use_container_width=True)
-    except Exception:
-        st.warning("画像のプレビューに失敗しました。別の画像を試してください。")
+        image_bytes = uploaded_file.getvalue()
+        image_mime_type = uploaded_file.type or "image/jpeg"
+
+        if DEBUG_MODE:
+            st.write("ファイル名:", uploaded_file.name)
+            st.write("MIME type:", image_mime_type)
+            st.write("ファイルサイズ:", uploaded_file.size)
+            st.write("bytes長:", len(image_bytes))
+
+        if not image_bytes:
+            st.error("画像データを読み込めませんでした。別の画像でお試しください。")
+        else:
+            preview_img = Image.open(BytesIO(image_bytes))
+            preview_img.load()
+
+            st.image(
+                preview_img,
+                caption="アップロード画像",
+                use_container_width=True
+            )
+
+            image_ready = True
+            st.info("画像の読み込みに成功しました。診断できます。")
+
+    except UnidentifiedImageError:
+        st.error("画像形式を読み取れませんでした。PNG/JPGの画像、またはスクリーンショットをお試しください。")
+        st.caption("iPhoneのHEIC画像や一部のアプリ保存画像では失敗する場合があります。")
+        image_bytes = None
+        image_mime_type = None
+
+    except Exception as e:
+        st.error("画像の読み込みに失敗しました。別の画像かスクリーンショットをお試しください。")
+        if DEBUG_MODE:
+            st.exception(e)
+        image_bytes = None
+        image_mime_type = None
 
 
 # ----------------------------
@@ -116,7 +159,7 @@ def safe_json_parse(raw_text: str) -> dict:
         raise
 
 
-def ai_check_risk(user_text: str, image_data: bytes | None = None) -> dict:
+def ai_check_risk(user_text: str, image_data: bytes | None = None, mime_type: str | None = None) -> dict:
     prompt = build_prompt(user_text)
 
     content = [
@@ -124,11 +167,13 @@ def ai_check_risk(user_text: str, image_data: bytes | None = None) -> dict:
     ]
 
     if image_data:
+        safe_mime = mime_type if mime_type in ["image/png", "image/jpeg", "image/jpg"] else "image/jpeg"
         image_base64 = base64.b64encode(image_data).decode("utf-8")
+
         content.append(
             {
                 "type": "input_image",
-                "image_url": f"data:image/jpeg;base64,{image_base64}"
+                "image_url": f"data:{safe_mime};base64,{image_base64}"
             }
         )
 
@@ -143,6 +188,10 @@ def ai_check_risk(user_text: str, image_data: bytes | None = None) -> dict:
     )
 
     raw = response.output_text
+
+    if DEBUG_MODE:
+        st.write("モデル出力:", raw)
+
     data = safe_json_parse(raw)
 
     if "risk" not in data:
@@ -229,16 +278,18 @@ def render_result(result: dict):
 # Action
 # ----------------------------
 if st.button("🔍 診断する", key="diagnose_button", use_container_width=True):
-    if not text.strip() and image_bytes is None:
+    if not text.strip() and not image_ready:
         st.warning("メッセージまたは画像を入力してください。")
     else:
         with st.spinner("診断中です..."):
             try:
-                result = ai_check_risk(text, image_bytes)
+                result = ai_check_risk(text, image_bytes if image_ready else None, image_mime_type)
                 render_result(result)
             except Exception as e:
-                st.error(f"エラーが発生しました: {e}")
-
+                st.error("診断中にエラーが発生しました。時間をおいて再度お試しください。")
+                st.caption("画像がうまく通らない場合は、スクリーンショット画像に変えて再度お試しください。")
+                if DEBUG_MODE:
+                    st.exception(e)
 
 st.markdown("---")
 st.caption("※この診断は参考情報です。緊急性がある場合は警察・公的窓口に相談してください。")
