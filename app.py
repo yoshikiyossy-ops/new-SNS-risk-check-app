@@ -23,6 +23,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 PASSWORD_SHEET_CSV_URL = os.getenv("PASSWORD_SHEET_CSV_URL")
 
 FREE_DAILY_LIMIT = 3
+DEBUG_MODE = False
 
 # =========================
 # セッション初期化
