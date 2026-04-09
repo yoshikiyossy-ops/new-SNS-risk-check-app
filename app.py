@@ -205,66 +205,42 @@ def ai_check_risk_text(text: str, premium: bool = False):
 
 
 def ai_check_risk_image(uploaded_file, premium: bool = True):
-    """
-    有料版用の画像診断
-    画像の中の文面・雰囲気・誘導表現などを分析
-    """
     file_bytes = uploaded_file.read()
-    mime_type = uploaded_file.type or "image/png"
+    mime_type = uploaded_file.type or "image/jpeg"
     base64_image = base64.b64encode(file_bytes).decode("utf-8")
 
-    if premium:
-        instruction = """
-画像内のメッセージ文面や誘導表現、圧の強さ、金銭誘導、外部誘導などの注意サインを丁寧に分析してください。
-人物の断定は避けてください。
-"""
-    else:
-        instruction = "簡潔に分析してください。"
-
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": "あなたは慎重で実用的なSNS安全アドバイザーです。必ずJSONのみで返答してください。"
-            },
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": f"""
+    prompt = """
 あなたはSNS安全アドバイザーです。
-画像に含まれるDM・チャット・メッセージ内容を分析し、
+画像に含まれるDM・チャット内容を分析し、
 危険の断定はせず、注意サインのみを抽出してください。
 
-{instruction}
-
 出力は必ずJSONのみで返してください。
-形式:
-{{
+{
   "risk": "低" または "中" または "高",
   "flags": ["注意ポイント1", "注意ポイント2"],
   "advice": "短い助言",
   "category": "詐欺" または "ストーカー" または "操作的言動" または "要注意" または "判断保留"
-}}
+}
 """
-                    },
+
+    response = client.responses.create(
+        model="gpt-4o-mini",
+        input=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": prompt},
                     {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:{mime_type};base64,{base64_image}"
-                        }
+                        "type": "input_image",
+                        "image_url": f"data:{mime_type};base64,{base64_image}"
                     }
                 ]
             }
-        ],
-        temperature=0.2
+        ]
     )
 
-    content = response.choices[0].message.content or ""
-    return safe_json_parse(content)
-
+    raw = response.output_text
+    return safe_json_parse(raw)
 
 # =========================
 # UI
