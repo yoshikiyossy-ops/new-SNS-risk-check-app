@@ -472,43 +472,6 @@ st.write("- より詳細な分析")
 st.write("- 実用的な安全アドバイス")
 
 
-    try:
-        image_bytes = uploaded_file.getvalue()
-        image_mime_type = uploaded_file.type or "image/jpeg"
-
-        if DEBUG_MODE:
-            st.write("ファイル名:", uploaded_file.name)
-            st.write("MIME type:", image_mime_type)
-            st.write("ファイルサイズ:", uploaded_file.size)
-            st.write("bytes長:", len(image_bytes))
-
-        if not image_bytes:
-            st.error("画像データを読み込めませんでした。別の画像でお試しください。")
-        else:
-            preview_img = Image.open(BytesIO(image_bytes))
-            preview_img.load()
-
-            st.image(
-                preview_img,
-                caption="アップロード画像",
-                use_container_width=True
-            )
-
-            image_ready = True
-            st.info("画像の読み込みに成功しました。診断できます。")
-
-    except UnidentifiedImageError:
-        st.error("画像形式を読み取れませんでした。PNG/JPGの画像、またはスクリーンショットをお試しください。")
-        st.caption("iPhoneのHEIC画像や一部のアプリ保存画像では失敗する場合があります。")
-        image_bytes = None
-        image_mime_type = None
-
-    except Exception as e:
-        st.error("画像の読み込みに失敗しました。別の画像かスクリーンショットをお試しください。")
-        if DEBUG_MODE:
-            st.exception(e)
-        image_bytes = None
-        image_mime_type = None
 
 
 # ----------------------------
