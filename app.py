@@ -245,15 +245,123 @@ def ai_check_risk_image(uploaded_file, premium: bool = True):
 # =========================
 # UI
 # =========================
+# =========================
+# UI
+# =========================
 st.title("⚠️ SNS要注意サイン診断")
 st.write("DMやメッセージをAIが読み取り、危険度と注意ポイントを整理します。")
 
-# プラン状態表示
 if st.session_state.premium:
     st.info("💎 有料版：テキスト無制限 / 画像診断対応")
 else:
     remaining = max(FREE_DAILY_LIMIT - st.session_state.free_count, 0)
     st.info(f"🔓 無料版：1日{FREE_DAILY_LIMIT}回まで / 残り {remaining} 回")
+
+with st.expander("🔐 有料版ログイン"):
+    st.write("note購入後に案内された最新パスワードを入力してください。")
+    password = st.text_input("有料版パスワード", type="password")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("ログイン", use_container_width=True):
+            if not password.strip():
+                st.warning("パスワードを入力してください")
+            else:
+                try:
+                    ok, matched_row = validate_premium_password(password)
+                    if ok:
+                        st.session_state.premium = True
+                        st.session_state.premium_password = password
+                        month_label = matched_row.get("month", "")
+                        expires_label = matched_row.get("expires", "")
+                        st.success(f"有料版が有効化されました（{month_label} / {expires_label}まで）")
+                    else:
+                        st.error("パスワードが違うか、現在は無効です")
+                except Exception as e:
+                    st.error(f"パスワード確認に失敗しました: {e}")
+
+    with col2:
+        if st.button("ログアウト", use_container_width=True):
+            st.session_state.premium = False
+            st.session_state.premium_password = ""
+            st.success("ログアウトしました")
+
+st.markdown("### ここにメッセージを貼る")
+text = st.text_area(
+    "メッセージ入力",
+    height=220,
+    placeholder="例：『すぐLINEに来て』『投資で必ず儲かる』『誰にも言わないで』など"
+)
+
+st.markdown("### 画像をアップしてください")
+
+if st.session_state.premium:
+    uploaded_file = st.file_uploader(
+        "画像を選択",
+        type=["png", "jpg", "jpeg", "webp"],
+        help="PNG / JPG / JPEG / WEBP の画像を選べます"
+    )
+else:
+    uploaded_file = None
+    st.write("🔒 画像診断は有料版で利用できます")
+
+image_bytes = None
+image_mime_type = None
+image_ready = False
+
+if uploaded_file is not None:
+    try:
+        image_bytes = uploaded_file.getvalue()
+        image_mime_type = uploaded_file.type or "image/jpeg"
+        preview_img = Image.open(uploaded_file)
+        st.image(preview_img, caption="アップロード画像", use_container_width=True)
+        image_ready = True
+    except UnidentifiedImageError:
+        st.error("画像形式を読み取れませんでした。PNG/JPGの画像を試してください。")
+        image_bytes = None
+        image_mime_type = None
+
+if st.button("🔍 診断する", use_container_width=True):
+    if not text.strip() and not image_ready:
+        st.warning("メッセージまたは画像を入力してください。")
+    else:
+        if not st.session_state.premium:
+            if st.session_state.free_count >= FREE_DAILY_LIMIT:
+                st.warning("無料版の利用回数に達しました。有料版をご利用ください。")
+                st.stop()
+            st.session_state.free_count += 1
+
+        with st.spinner("診断中です..."):
+            try:
+                if image_ready:
+                    result = ai_check_risk(text, image_bytes, image_mime_type)
+                    render_result(result)
+                else:
+                    result = ai_check_risk_text(text, premium=st.session_state.premium)
+                    show_result(result)
+            except Exception as e:
+                st.error("診断中にエラーが発生しました。時間をおいて再度お試しください。")
+                if DEBUG_MODE:
+                    st.exception(e)
+
+        if not st.session_state.premium:
+            remaining = max(FREE_DAILY_LIMIT - st.session_state.free_count, 0)
+            st.caption(f"無料版の残り回数: {remaining} 回")
+
+st.markdown("---")
+st.write("### 無料版と有料版の違い")
+
+st.write("**無料版**")
+st.write("- テキスト診断")
+st.write(f"- 1日{FREE_DAILY_LIMIT}回まで")
+st.write("- シンプル分析")
+
+st.write("**有料版**")
+st.write("- テキスト診断 無制限")
+st.write("- 画像診断対応")
+st.write("- より詳細な分析")
+st.write("- 実用的な安全アドバイス")
 
 # =========================
 # 有料版ログイン
