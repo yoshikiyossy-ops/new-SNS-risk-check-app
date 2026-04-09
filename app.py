@@ -7,6 +7,14 @@ import requests
 import streamlit as st
 from datetime import date
 from openai import OpenAI
+from PIL import Image, UnidentifiedImageError
+
+try:
+    image = Image.open(uploaded_file)
+    st.image(image)
+
+except UnidentifiedImageError:
+    st.error("画像ファイルが読み取れません。別の画像を試してください。")
 
 # =========================
 # 基本設定
