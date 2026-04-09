@@ -9,12 +9,6 @@ from datetime import date
 from openai import OpenAI
 from PIL import Image, UnidentifiedImageError
 
-try:
-    image = Image.open(uploaded_file)
-    st.image(image)
-
-except UnidentifiedImageError:
-    st.error("画像ファイルが読み取れません。別の画像を試してください。")
 
 # =========================
 # 基本設定
@@ -358,9 +352,15 @@ if st.session_state.premium:
         "スクリーンショットや画像をアップロード",
         type=["png", "jpg", "jpeg", "webp"]
     )
+    
 
     if uploaded_file is not None:
-        st.image(uploaded_file, caption="アップロード画像", use_container_width=True)
+        try:
+            image = Image.open(uploaded_file)
+    　　　　　st.image(image)
+　　　　　except UnidentifiedImageError:
+   　　　　　 st.error("画像ファイルが読み取れません。別の画像を試してください。")
+
 
         if st.button("画像を診断する"):
             with st.spinner("画像を診断中..."):
