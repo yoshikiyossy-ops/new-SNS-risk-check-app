@@ -377,7 +377,8 @@ st.write("**有料版**")
 st.write("- テキスト診断 無制限")
 st.write("- 画像診断対応")
 st.write("- より詳細な分析")
-st.write("- 実用的な安全アドバイス")st.markdown("### ここにメッセージを貼る")
+st.write("- 実用的な安全アドバイス")
+st.markdown("### ここにメッセージを貼る")
 text = st.text_area(
     label="メッセージ入力",
     label_visibility="collapsed",
