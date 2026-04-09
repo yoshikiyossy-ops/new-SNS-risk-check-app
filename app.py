@@ -362,28 +362,7 @@ st.write("- テキスト診断 無制限")
 st.write("- 画像診断対応")
 st.write("- より詳細な分析")
 st.write("- 実用的な安全アドバイス")
-st.markdown("### ここにメッセージを貼る")
-text = st.text_area(
-    label="メッセージ入力",
-    label_visibility="collapsed",
-    height=220,
-    placeholder="例：『すぐLINEに来て』『投資で必ず儲かる』『誰にも言わないで』など"
-)
 
-st.markdown("### 画像をアップしてください")
-uploaded_file = st.file_uploader(
-    "画像を選択",
-    type=["png", "jpg", "jpeg"],
-    key="image_uploader",
-    help="PNG / JPG / JPEG の画像を選べます。うまくいかない場合はスクリーンショットをお試しください。"
-)
-
-image_bytes = None
-image_mime_type = None
-image_ready = False
-
-if uploaded_file is not None:
-    st.success("画像が選択されました。")
 
     try:
         image_bytes = uploaded_file.getvalue()
