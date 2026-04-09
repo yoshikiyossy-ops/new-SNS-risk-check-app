@@ -352,15 +352,14 @@ if st.session_state.premium:
         "スクリーンショットや画像をアップロード",
         type=["png", "jpg", "jpeg", "webp"]
     )
-    
 
     if uploaded_file is not None:
         try:
             image = Image.open(uploaded_file)
-    　　　　　st.image(image)
-　　　　　except UnidentifiedImageError:
-   　　　　　 st.error("画像ファイルが読み取れません。別の画像を試してください。")
+            st.image(image, caption="アップロード画像", use_container_width=True)
 
+        except UnidentifiedImageError:
+            st.error("画像ファイルが読み取れません。PNG/JPG形式を試してください。")
 
         if st.button("画像を診断する"):
             with st.spinner("画像を診断中..."):
